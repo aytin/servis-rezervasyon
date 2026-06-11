@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { addStop, getStops } from "@/actions/durakActions";
 
 export default async function AdminDuraklarPage() {

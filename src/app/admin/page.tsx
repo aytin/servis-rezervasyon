@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getReservations } from "@/actions/rezervasyonActions";
 import { logoutAdmin } from "@/actions/authActions";
 

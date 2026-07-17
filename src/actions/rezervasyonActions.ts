@@ -3,117 +3,91 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export async function createReservation(formData: FormData) {
-  const phone = formData.get("phone") as string; // email -> phone oldu
-  const stopId = formData.get("stopId") as string;
-  const date = formData.get("date") as string;
+interface ReservationInput {
+  stopId: string;
+  date: string;
+}
 
-  if (!phone || !stopId || !date) {
+export async function createReservation(data: ReservationInput) {
+  const { stopId, date } = data;
+
+  if (!stopId || !date) {
     return { error: "Lütfen tüm alanları doldurun." };
   }
 
   try {
-    // 1. Kullanıcıyı telefon numarasına göre bul veya yoksa yeni oluştur
-    let user = await db.user.findUnique({ where: { phone } });
-    if (!user) {
-      user = await db.user.create({
-        data: { 
-          phone, 
-          name: `Yolcu-${phone.slice(-4)}` // İsim yerine geçici olarak telefonun son 4 hanesini yazıyoruz
-        }
-      });
-    }
+    // Test için sabit bir kullanıcı ID'si (Bunu kendi veritabanınızdan bir ID ile değiştirin)
+    const currentUserId = "6a187d2344db5bc7f2e36caa"; 
 
-    // 2. Seçilen durağın bilgilerini ve kapasitesini çek
-    const stop = await db.stop.findUnique({ where: { id: stopId } });
-    if (!stop) return { error: "Seçilen durak bulunamadı." };
-
-    // 3. O gün ve o durak için toplam kaç rezervasyon yapılmış say
-    const currentReservationsCount = await db.reservation.count({
-      where: { stopId: stopId, date: date }
-    });
-
-    // 4. Kontenjan kontrolü yap
-    if (currentReservationsCount >= stop.capacity) {
-      return { error: "Maalesef bu durak için kontenjan dolmuştur!" };
-    }
-
-    // 5. Her şey yolundaysa rezervasyonu kaydet
-    await db.reservation.create({
-      data: {
-        userId: user.id,
-        stopId: stop.id,
-        date: date
+    // 1. Mükerrer kayıt kontrolü
+    const existing = await db.reservation.findFirst({
+      where: { 
+        userId: currentUserId, 
+        date: date, 
+        stopId: stopId 
       }
     });
 
-    revalidatePath("/");
-    return { success: "Rezervasyonunuz başarıyla oluşturuldu!" };
+    if (existing) {
+      return { error: "Bu tarih ve durak için zaten bir rezervasyonunuz bulunuyor." };
+    }
 
-  } catch (error) {
-    console.error(error);
-    return { error: "Sistemde bir hata oluştu, lütfen tekrar deneyin." };
-  }
-}
-
-// Veritabanındaki tüm rezervasyonları detaylarıyla getiren fonksiyon
-export async function getReservations() {
-  return await db.reservation.findMany({
-    include: {
-      user: true, // Kullanıcı bilgilerini (telefon vb.) dahil et
-      stop: true, // Durak bilgilerini (isim, saat vb.) dahil et
-    },
-    orderBy: {
-      createdAt: "desc", // En yeni rezervasyon en üstte görünsün
-    },
-  });
-}
-
-// Telefon numarasına göre kullanıcının rezervasyonlarını getiren fonksiyon
-export async function getReservationsByPhone(phone: string) {
-  if (!phone) return { error: "Lütfen bir telefon numarası girin." };
-
-  try {
-    // Telefon numarasına ait kullanıcıyı ve onun rezervasyonlarını (durak bilgileriyle) bul
-    const userWithReservations = await db.user.findUnique({
-      where: { phone },
-      include: {
-        reservations: {
-          include: {
-            stop: true,
-          },
-          orderBy: {
-            date: "desc", // En yakın/en yeni tarihli rezervasyon üstte görünsün
-          },
+    // 2. Rezervasyonu Oluşturma (Kırmızı vurguyu bitiren connect yapısı)
+    const newReservation = await db.reservation.create({
+      data: {
+        date: date, // Şemanızda adı farklıysa (örn: travelDate) burayı ona göre değiştirin
+        user: {
+          connect: { id: currentUserId } // userId'yi doğrudan yazmak yerine User'a bağlıyoruz
         },
+        stop: {
+          connect: { id: stopId } // stopId'yi doğrudan yazmak yerine Stop'a bağlıyoruz
+        }
       },
     });
 
-    if (!userWithReservations || userWithReservations.reservations.length === 0) {
-      return { error: "Bu telefon numarasına ait aktif bir rezervasyon bulunamadı." };
-    }
-
-    // Rezervasyon listesini başarıyla döndür
-    return { success: true, reservations: userWithReservations.reservations };
-
+    revalidatePath("/");
+    return { success: true, reservation: newReservation };
+    
   } catch (error) {
-    console.error(error);
-    return { error: "Sorgulama yapılırken bir hata oluştu." };
+    console.error("Rezervasyon detaylı hata çıktısı:", error);
+    return { error: "Veritabanına kaydedilirken bir hata oluştu." };
   }
 }
 
-// Rezervasyonu ID'sine göre silen fonksiyon
-export async function cancelReservation(reservationId: string) {
-  if (!reservationId) return { error: "Geçersiz işlem." };
+// 1. Giriş yapan kullanıcının tüm rezervasyonlarını durak bilgileriyle birlikte getirir
+export async function getUserReservations() {
+  // Test için kullandığımız sabit kullanıcı ID'si (Login sistemi bağlanınca session'dan alınacak)
+  const currentUserId = "6a187d2344db5bc7f2e36caa"; 
 
   try {
-    await db.reservation.delete({
-      where: { id: reservationId },
+    const reservations = await db.reservation.findMany({
+      where: { userId: currentUserId },
+      include: {
+        stop: true // Rezervasyonun hangi durağa ait olduğunu (isim, saat) görebilmek için ilişkili tabloyu çekiyoruz
+      },
+      orderBy: {
+        date: "asc" // Tarihe göre yakından uzağa sırala
+      }
     });
-
-    return { success: "Rezervasyonunuz başarıyla iptal edildi." };
+    return { success: true, data: reservations };
   } catch (error) {
-    console.error(error);
-    return { error: "İptal işlemi gerçekleştirilirken bir hata oluştu." };
+    console.error("Rezervasyon getirme hatası:", error);
+    return { error: "Rezervasyonlarınız yüklenirken bir hata oluştu." };
+  }
+}
+
+// 2. Rezervasyonu iptal eder (siler)
+export async function cancelReservation(reservationId: string) {
+  try {
+    await db.reservation.delete({
+      where: { id: reservationId }
+    });
+    
+    // Sayfanın anlık olarak güncellenmesi ve silinen kaydın listeden düşmesi için
+    revalidatePath("/sorgula");
+    return { success: true };
+  } catch (error) {
+    console.error("Rezervasyon iptal hatası:", error);
+    return { error: "Rezervasyon iptal edilirken bir hata oluştu." };
   }
 }

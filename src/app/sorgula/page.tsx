@@ -1,136 +1,106 @@
 'use client'
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // Railway build koruması
 
-import { useState } from "react";
-import { getReservationsByPhone, cancelReservation } from "@/actions/rezervasyonActions";
+import { useState, useEffect } from "react";
+import { getUserReservations, cancelReservation } from "@/actions/rezervasyonActions";
 
 export default function SorgulaPage() {
-  const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [cancelLoadingId, setCancelLoadingId] = useState<string | null>(null); // Hangi rezervasyonun iptal edildiğini tutar
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reservations, setReservations] = useState<any[]>([]);
-  const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Rezervasyon Arama Fonksiyonu
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  // Sayfa açıldığında kullanıcının rezervasyonlarını otomatik yükle
+  async function loadReservations() {
     setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
-    setSearched(true);
-
-    const result = await getReservationsByPhone(phone);
-    setLoading(false);
-
-    if (result.error) {
-      setError(result.error);
-      setReservations([]);
-    } else if (result.reservations) {
-      setReservations(result.reservations);
+    const result = await getUserReservations();
+    if (result.success && result.data) {
+      setReservations(result.data);
+    } else if (result.error) {
+      setMessage({ type: "error", text: result.error });
     }
+    setLoading(false);
   }
 
-  // Rezervasyon İptal Etme Fonksiyonu
-  async function handleCancel(reservationId: string) {
-    if (!confirm("Bu rezervasyonu iptal etmek istediğinize emin misiniz?")) return;
+  useEffect(() => {
+    loadReservations();
+  }, []);
 
-    setCancelLoadingId(reservationId);
-    setError(null);
-    setSuccessMessage(null);
+  // İptal Et butonuna basıldığında çalışır
+  async function handleCancel(id: string) {
+    const confirmCancel = confirm("Bu rezervasyonu iptal etmek istediğinize emin misiniz?");
+    if (!confirmCancel) return;
 
-    const result = await cancelReservation(reservationId);
-    setCancelLoadingId(null);
+    const result = await cancelReservation(id);
 
-    if (result.error) {
-      setError(result.error);
-    } else if (result.success) {
-      setSuccessMessage(result.success);
-      // İptal edilen rezervasyonu ekrandaki listeden anlık olarak çıkartıyoruz
-      setReservations(reservations.filter((res) => res.id !== reservationId));
+    if (result.success) {
+      setMessage({ type: "success", text: "Rezervasyonunuz başarıyla iptal edildi." });
+      // Listeyi yerelde de güncelle (silineni listeden çıkar)
+      setReservations(reservations.filter(res => res.id !== id));
+    } else if (result.error) {
+      setMessage({ type: "error", text: result.error });
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <h2 className="text-3xl font-extrabold text-gray-900">Rezervasyon Sorgulama & İptal</h2>
-        <p className="mt-2 text-sm text-gray-600">Seyahat bilgilerinizi görmek veya iptal etmek için telefon numaranızı girin.</p>
+        <h2 className="text-3xl font-extrabold text-gray-900">Rezervasyonlarım</h2>
+        <p className="mt-2 text-sm text-gray-600">Aktif seyahat listeleriniz ve yönetim ekranı.</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border mb-6">
-          <form onSubmit={handleSearch} className="flex gap-3">
-            <div className="flex-1">
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="block w-full p-3 border rounded-lg text-black bg-white focus:ring-blue-500 focus:border-blue-500"
-                placeholder="05551234567"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition disabled:bg-gray-400"
-            >
-              {loading ? "Aranıyor..." : "Sorgula"}
-            </button>
-          </form>
-
-          {/* HATA MESAJI */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm font-medium">
-              {error}
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border">
+          
+          {message && (
+            <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${
+              message.type === "success" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800"
+            }`}>
+              {message.text}
             </div>
           )}
 
-          {/* BAŞARI MESAJI (İPTAL İŞLEMİ İÇİN) */}
-          {successMessage && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm font-medium">
-              {successMessage}
+          {loading ? (
+            <div className="text-center py-6 text-gray-500">Rezervasyonlarınız yükleniyor...</div>
+          ) : reservations.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">Henüz aktif bir rezervasyonunuz bulunmuyor.</p>
+              <a href="/" className="inline-block px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
+                Hemen Rezervasyon Yap
+              </a>
             </div>
-          )}
-        </div>
-
-        {/* REZERVASYON SONUÇLARI */}
-        {searched && reservations.length > 0 && (
-          <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-            <div className="p-4 bg-gray-50 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-800">Bulunan Rezervasyonlarınız</h3>
-            </div>
-            <div className="divide-y divide-gray-100">
+          ) : (
+            <div className="space-y-4">
               {reservations.map((res) => (
-                <div key={res.id} className="p-4 flex justify-between items-center text-gray-700 hover:bg-gray-50 transition">
+                <div key={res.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-xl bg-gray-50 hover:border-gray-300 transition">
                   <div>
-                    <p className="font-semibold text-black text-lg">{res.stop.name}</p>
-                    <p className="text-sm text-gray-500 mt-0.5">Tarih: {res.date} | Saat: {res.stop.time}</p>
+                    <div className="text-lg font-bold text-gray-900">
+                      {res.stop?.name || "Bilinmeyen Durak"}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1 flex gap-4">
+                      <span>📅 {res.date}</span>
+                      <span>⏰ Saat: {res.stop?.time || "--:--"}</span>
+                    </div>
                   </div>
                   
-                  {/* İPTAL ET BUTONU */}
-                  <div>
+                  <div className="mt-4 sm:mt-0 text-right">
                     <button
                       onClick={() => handleCancel(res.id)}
-                      disabled={cancelLoadingId !== null}
-                      className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium border border-red-200 transition disabled:opacity-50"
+                      className="w-full sm:w-auto px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition"
                     >
-                      {cancelLoadingId === res.id ? "İptal ediliyor..." : "İptal Et"}
+                      İptal Et
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* ANASAYFAYA DÖN */}
-      <div className="text-center mt-6">
-        <a href="/" className="text-blue-600 hover:underline text-sm">← Rezervasyon Sayfasına Dön</a>
+          <div className="text-center mt-8 border-t pt-4">
+            <a href="/" className="text-blue-600 hover:underline text-sm">← Yeni Rezervasyon Oluştur</a>
+          </div>
+
+        </div>
       </div>
     </div>
   );

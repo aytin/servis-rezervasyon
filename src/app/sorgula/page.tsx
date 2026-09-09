@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic"; // Railway build koruması
 
 import { useState, useEffect } from "react";
-import { getUserReservations, cancelReservation } from "@/actions/rezervasyonActions";
+import { getUserReservations, cancelReservation } from "@/actions/reservationActions";
 
 export default function SorgulaPage() {
   const [reservations, setReservations] = useState<any[]>([]);

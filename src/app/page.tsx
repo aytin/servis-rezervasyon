@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getStops } from "@/actions/durakActions";
-import { createReservation } from "@/actions/rezervasyonActions"; 
+import { createReservation } from "@/actions/reservationActions"; 
 
 export default function HomePage() {
   const [stops, setStops] = useState<any[]>([]);

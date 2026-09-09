@@ -7,34 +7,55 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// 1. Kullanıcı Modeli
+// Kullanıcı Rolleri
+enum Role {
+  ADMIN
+  DRIVER
+  USER
+}
+
 model User {
   id           String        @id @default(auto()) @map("_id") @db.ObjectId
-  name         String?
   phone        String        @unique
-  role         String        @default("USER") // USER veya ADMIN
+  password     String
+  name         String?
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   reservations Reservation[]
 }
 
 // 2. Durak Modeli (Menüden seçilecek duraklar)
 model Stop {
-  id           String        @id @default(auto()) @map("_id") @db.ObjectId
-  name         String        // Örn: "Kadıköy Evlendirme Dairesi"
-  time         String        // Örn: "08:30"
-  capacity     Int           // Aracın toplam kapasitesi (Örn: 16)
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String // Örn: "Kadıköy Evlendirme Dairesi"
+  time     String // Örn: "08:30"
+  capacity Int // Aracın toplam kapasitesi (Örn: 16)
+
+  // Reservation ile ters ilişki (Tek olmalı)
   reservations Reservation[]
 }
 
 // 3. Rezervasyon Modeli (İkisini birbirine bağlayan köprü)
 model Reservation {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  date      String   // Eğer şemanızda bu satır yoksa MUTLAKA ekleyin
-  createdAt DateTime @default(now())
-  
-  // İlişkiler
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id])
-  
-  stopId    String   @db.ObjectId
-  stop      Stop     @relation(fields: [stopId], references: [id])
+  id         String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String            @db.ObjectId
+  user       User              @relation(fields: [userId], references: [id])
+  pickup     String // Biniş Noktası
+  dropoff    String? // Varış Noktası (Kaldırıldı)
+  date       DateTime // Rezervasyon Tarihi
+  passengers Int               @default(1)
+  status     ReservationStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  stop       Stop?             @relation(fields: [stopId], references: [id])
+  stopId     String?           @db.ObjectId
+}
+
+// 4. Rezervasyon durumu
+enum ReservationStatus {
+  PENDING // Beklemede
+  CONFIRMED // Onaylandı
+  COMPLETED // Tamamlandı
+  CANCELLED // İptal Edildi
 }

@@ -1,7 +1,7 @@
 'use client' // Bu sayede state (durum) yönetimi ve animasyonlar kullanabiliriz
 
 import { useState } from "react";
-import { createReservation } from "@/actions/rezervasyonActions";
+import { createReservation } from "@/actions/reservationActions";
 
 // Durak tipini TypeScript için tanımlıyoruz
 interface Stop {
@@ -29,7 +29,7 @@ export default function ReservationForm({ stops }: { stops: Stop[] }) {
     if (result?.error) {
       setStatus({ type: 'error', message: result.error });
     } else if (result?.success) {
-      setStatus({ type: 'success', message: result.success });
+      setStatus({ type: 'success', message: "Rezervasyon talebiniz başarıyla oluşturuldu." });
       
       // Başarılı ise formu temizlemek için (isteğe bağlı)
       const form = document.getElementById("rezervasyon-formu") as HTMLFormElement;

@@ -1,9 +1,9 @@
-'use client' // Bu sayede state (durum) yönetimi ve animasyonlar kullanabiliriz
+'use client'
 
 import { useState } from "react";
+import { useRouter } from "next/navigation"; // 1. Router eklendi
 import { createReservation } from "@/actions/reservationActions";
 
-// Durak tipini TypeScript için tanımlıyoruz
 interface Stop {
   id: string;
   name: string;
@@ -12,16 +12,14 @@ interface Stop {
 }
 
 export default function ReservationForm({ stops }: { stops: Stop[] }) {
-  // Geri bildirim mesajlarını tutacak state'ler
+  const router = useRouter(); // 2. Router tanımlandı
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Form gönderildiğinde çalışacak fonksiyon
   async function handleSubmit(formData: FormData) {
     setLoading(true);
     setStatus(null);
 
-    // Server Action'ı çağırıyoruz ve dönen cevabı bekliyoruz
     const result = await createReservation(formData);
 
     setLoading(false);
@@ -29,21 +27,23 @@ export default function ReservationForm({ stops }: { stops: Stop[] }) {
     if (result?.error) {
       setStatus({ type: 'error', message: result.error });
     } else if (result?.success) {
-      setStatus({ type: 'success', message: "Rezervasyon talebiniz başarıyla oluşturuldu." });
+      setStatus({ type: 'success', message: "Rezervasyon talebiniz başarıyla oluşturuldu. Yönlendiriliyorsunuz..." });
       
-      // Başarılı ise formu temizlemek için (isteğe bağlı)
       const form = document.getElementById("rezervasyon-formu") as HTMLFormElement;
       form?.reset();
+
+      // 3. Başarılı işlem sonrası /sorgula sayfasına yönlendirme
+      setTimeout(() => {
+        router.push('/sorgula');
+      }, 1500);
     }
   }
 
-  // Bugünün tarihini ayarlama (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border">
       
-      {/* UYARI MESAJ KUTULARI */}
       {status && (
         <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${
           status.type === 'success' 
@@ -54,7 +54,6 @@ export default function ReservationForm({ stops }: { stops: Stop[] }) {
         </div>
       )}
 
-      {/* REZERVASYON FORMU */}
       <form id="rezervasyon-formu" action={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700">Telefon Numaranız</label>

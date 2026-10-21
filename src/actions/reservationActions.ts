@@ -67,6 +67,7 @@ export async function createReservation(input: CreateReservationInput) {
             phone: phone.trim(),
             name: `Müşteri (${phone.slice(-4)})`,
             role: "USER",
+            password: "123456", // Şema zorunluluğu için varsayılan şifre eklendi
           },
         });
       }

@@ -182,3 +182,48 @@ export async function cancelReservation(reservationId: string) {
 export async function createReservationFormAction(formData: FormData) {
   await createReservation(formData);
 }
+
+// 5. Yeni Kullanıcı Kaydı Oluşturma
+export async function registerUser(formData: FormData) {
+  try {
+    const name = formData.get("name") as string;
+    const phone = formData.get("phone") as string;
+
+    if (!name || !phone) {
+      return { error: "Lütfen tüm alanları doldurun." };
+    }
+
+    // Telefon numarası daha önce kayıtlı mı kontrol et
+    const existingUser = await db.user.findFirst({
+      where: { phone: phone.trim() },
+    });
+
+    if (existingUser) {
+      return { error: "Bu telefon numarası ile kayıtlı bir hesap zaten var. Lütfen giriş yapın." };
+    }
+
+    // Yeni kullanıcıyı oluştur
+    const newUser = await db.user.create({
+      data: {
+        name: name.trim(),
+        phone: phone.trim(),
+        role: "USER", // Varsayılan rol müşteri
+        password: "123456", // Prisma şeması şifre talep ettiği için varsayılan değer
+      },
+    });
+
+    // Oturum çerezini (cookie) ayarla
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "session",
+      JSON.stringify({ id: newUser.id, role: newUser.role, name: newUser.name }),
+      { path: "/", httpOnly: true }
+    );
+    cookieStore.set("user_phone", newUser.phone, { path: "/", httpOnly: true });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Kayıt olma hatası:", error);
+    return { error: "Kayıt oluşturulurken bir sunucu hatası oluştu." };
+  }
+}

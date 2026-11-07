@@ -6,6 +6,15 @@ const STOPS = ["Arı-su", "Kuş cenneti", "Okul", "Kapı"];
 export default async function SoforPanel() {
   const reservations = await getTodayDriverReservations();
 
+  // --- DEBUG İÇİN KONTROL KODU ---
+  console.log("--- ŞOFÖR PANELİ TARİH KONTROLÜ ---");
+  reservations.forEach((r, idx) => {
+    console.log(`Rezervasyon ${idx + 1} Ham Tarih (DB):`, r.date);
+    console.log(`Rezervasyon ${idx + 1} Çevrilen:`, new Date(r.date).toLocaleDateString("tr-TR"));
+  });
+  console.log("Sistem (Bugünün) Tarihi:", new Date().toLocaleDateString("tr-TR"));
+  // --------------------------------
+
   // Toplam Onaylı Yolcu Sayısı
   const totalPassengers = reservations.reduce((acc, r) => acc + r.passengers, 0);
 

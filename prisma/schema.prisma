@@ -36,7 +36,15 @@ model Stop {
   reservations Reservation[]
 }
 
-// 3. Rezervasyon Modeli (İkisini birbirine bağlayan köprü)
+// 3. Servis Saatleri
+model ServiceTime {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  time      String   @unique // Örn: "08:30", "12:00"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// 4. Rezervasyon Modeli (İkisini birbirine bağlayan köprü)
 model Reservation {
   id         String            @id @default(auto()) @map("_id") @db.ObjectId
   userId     String            @db.ObjectId
@@ -44,6 +52,7 @@ model Reservation {
   pickup     String // Biniş Noktası
   dropoff    String? // Varış Noktası (Kaldırıldı)
   date       DateTime // Rezervasyon Tarihi
+  time       String?  // <-- Müşterinin seçtiği sefer saati (Örn: "08:30")
   passengers Int               @default(1)
   status     ReservationStatus @default(PENDING)
   createdAt  DateTime          @default(now())
@@ -52,7 +61,7 @@ model Reservation {
   stopId     String?           @db.ObjectId
 }
 
-// 4. Rezervasyon durumu
+// 5. Rezervasyon durumu
 enum ReservationStatus {
   PENDING // Beklemede
   CONFIRMED // Onaylandı

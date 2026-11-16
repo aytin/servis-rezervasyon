@@ -1,11 +1,15 @@
 import { createReservation, getMyReservations } from "@/actions/reservationActions";
 import { logoutUser } from "@/actions/authActions";
 import { createReservationFormAction } from "@/actions/reservationActions";
+import { getServiceTimes } from "@/actions/adminActions";
 
 const STOPS = ["Arı-su", "Kuş cenneti", "Okul", "Kapı"];
 
+export const dynamic = "force-dynamic";
+
 export default async function MusteriPanel() {
   const reservations = await getMyReservations();
+  const serviceTimes = await getServiceTimes();
   
   // Bugünkü tarihi YYYY-MM-DD formatında alıyoruz
   const today = new Date().toISOString().split("T")[0];
@@ -54,27 +58,54 @@ export default async function MusteriPanel() {
                 </select>
               </div>
 
-              {/* TARİH VE YOLCU SAYISI */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* TARİH, SAAT VE YOLCU SAYISI */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Tarih</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">📅 Tarih</label>
                   <input
                     type="date"
                     name="date"
                     defaultValue={today}
                     required
-                    className="mt-1 block w-full p-2.5 border rounded-lg text-sm text-black bg-white"
+                    className="block w-full p-2.5 border rounded-lg text-sm text-black bg-white"
                   />
                 </div>
+                
+                {/* DİNAMİK SERVİS SAATİ SEÇİMİ */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Yolcu Sayısı</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ⏰ Saat
+                  </label>
+                  {serviceTimes.length === 0 ? (
+                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                      Aktif saat yok
+                    </div>
+                  ) : (
+                    <select
+                      name="time"
+                      required
+                      defaultValue=""
+                      className="w-full p-2.5 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="" disabled>Seçiniz...</option>
+                      {serviceTimes.map((st) => (
+                        <option key={st.id} value={st.time}>
+                          {st.time}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">👥 Yolcu</label>
                   <input
                     type="number"
                     name="passengers"
                     min="1"
                     defaultValue="1"
                     required
-                    className="mt-1 block w-full p-2.5 border rounded-lg text-sm text-black bg-white"
+                    className="block w-full p-2.5 border rounded-lg text-sm text-black bg-white"
                   />
                 </div>
               </div>
@@ -98,26 +129,35 @@ export default async function MusteriPanel() {
               <div className="space-y-3 max-h-[450px] overflow-y-auto">
                 {reservations.map((res) => (
                   <div key={res.id} className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 transition space-y-1">
-                    <div className="flex justify-between items-start">
-                      <span className="font-semibold text-sm text-gray-900">
-                        🚏 Biniş Durağı: {res.pickup}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          res.status === "PENDING"
-                            ? "bg-amber-100 text-amber-700"
-                            : res.status === "CONFIRMED"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {res.status === "PENDING" ? "Beklemede" : res.status === "CONFIRMED" ? "Onaylandı" : "Tamamlandı"}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      📅 Tarih: {new Date(res.date).toLocaleDateString("tr-TR")} | 👥 {res.passengers} Yolcu
-                    </div>
+                  <div className="flex justify-between items-start">
+                    <span className="font-semibold text-sm text-gray-900">
+                      🚏 Biniş Durağı: {res.pickup}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        res.status === "PENDING"
+                          ? "bg-amber-100 text-amber-700"
+                          : res.status === "CONFIRMED"
+                          ? "bg-green-100 text-green-700"
+                          : res.status === "COMPLETED"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {res.status === "PENDING"
+                        ? "Beklemede"
+                        : res.status === "CONFIRMED"
+                        ? "Onaylandı"
+                        : res.status === "COMPLETED"
+                        ? "Tamamlandı"
+                        : "İptal Edildi"}
+                    </span>
                   </div>
+                  <div className="text-xs text-gray-500">
+                    📅 Tarih: {new Date(res.date).toLocaleDateString("tr-TR")}
+                    {res.time && ` | ⏰ Saat: ${res.time}`} | 👥 {res.passengers} Yolcu
+                  </div>
+                </div>
                 ))}
               </div>
             )}

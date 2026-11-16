@@ -102,6 +102,11 @@ export default async function SoforPanel() {
                     <div className="text-sm text-gray-600 flex items-center gap-4">
                       <span>🚏 Biniş Durağı: <strong className="text-amber-700">{res.pickup}</strong></span>
                       <span>👥 Yolcu: <strong>{res.passengers} Kişi</strong></span>
+                      {res.time && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-semibold text-xs border border-amber-200">
+                          🕒 Saat: {res.time}
+                        </span>
+                      )}
                     </div>
                   </div>
 

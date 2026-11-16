@@ -11,6 +11,7 @@ type CreateReservationInput =
   | FormData
   | {
       date?: string | Date;
+      time?: string; // <-- Eklendi
       pickup?: string;
       stopId?: string;
       passengers?: number;
@@ -27,12 +28,14 @@ export async function createReservation(input: CreateReservationInput) {
     let phone = "";
     let pickup = "";
     let dateStr = "";
+    let time = "";
     let passengers = 1;
 
     // A) FormData ile geldiyse
     if (input instanceof FormData) {
       pickup = (input.get("pickup") || input.get("stopId")) as string;
       dateStr = input.get("date") as string;
+      time = (input.get("time") as string) || ""; // <-- Eklendi
       phone = (input.get("phone") as string) || "";
       passengers = parseInt(input.get("passengers") as string) || 1;
     } 
@@ -40,6 +43,7 @@ export async function createReservation(input: CreateReservationInput) {
     else if (typeof input === "object" && input !== null) {
       pickup = input.pickup || input.stopId || "";
       dateStr = input.date instanceof Date ? input.date.toISOString() : (input.date || "");
+      time = input.time || ""; // <-- Eklendi
       phone = input.phone || "";
       passengers = input.passengers || 1;
     }
@@ -87,6 +91,7 @@ export async function createReservation(input: CreateReservationInput) {
         userId: userId,
         pickup,
         date: new Date(dateStr),
+        time: time || null, // <-- Veritabanına saat kaydedildi
         passengers,
         status: "PENDING",
       },
